@@ -1,0 +1,9 @@
+# Live dry run, FR VAT while VIES France was intermittently busy (2026-10-24). Same script, earlier revision.
+# Node 1 got a VIES answer, nodes 2-4 got 'VIES unavailable' -> attestation differs -> consensus fails, nothing written.
+[2026-10-24T14:18:34.127Z] trigger payload: {"vat":"FR39356000000","iban":"FR76…","name":"La Poste"}
+[2026-10-24T14:18:34.129Z] emulating 4 DON nodes: GET https://kyb-evidence-desk.moneymachine.workers.dev/api/attestation?vat=FR39356000000&iban=…&name=La+Poste
+[2026-10-24T14:18:53.632Z] node 1: HTTP 200 decision=pass attestation=0xd5de096e21663a876a5b6e54d46d87cb648b0f6b47c0c722e83a9e75de4483a4
+[2026-10-24T14:18:55.570Z] node 2: HTTP 200 decision=review attestation=0x97f5b157ab90a71bdb9c661dd1e769ddb61a2411a927b0d090fa7b93c7c94aa5
+[2026-10-24T14:18:57.690Z] node 3: HTTP 200 decision=review attestation=0x97f5b157ab90a71bdb9c661dd1e769ddb61a2411a927b0d090fa7b93c7c94aa5
+[2026-10-24T14:18:59.607Z] node 4: HTTP 200 decision=review attestation=0x97f5b157ab90a71bdb9c661dd1e769ddb61a2411a927b0d090fa7b93c7c94aa5
+[2026-10-24T14:18:59.607Z] identical aggregation: NODES DISAGREE -> consensus fails, nothing written (fail closed)

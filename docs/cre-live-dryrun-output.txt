@@ -1,0 +1,20 @@
+bun test v1.4.2 (744846f84)
+
+live-dryrun.spec.ts:
+[2026-10-24T14:19:42.231Z] HTTP trigger payload: vat=IE6388047V name=Google Ireland iban=IE29…
+[2026-10-24T14:19:42.231Z] emulating 4 DON nodes, each: GET https://kyb-evidence-desk.moneymachine.workers.dev/api/attestation?vat=IE6388047V&iban=IE29…&name=Google+Ireland
+[2026-10-24T14:19:43.101Z] node 1: HTTP 200 decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140
+[2026-10-24T14:19:43.750Z] node 2: HTTP 200 decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140
+[2026-10-24T14:19:44.050Z] node 3: HTTP 200 decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140
+[2026-10-24T14:19:44.713Z] node 4: HTTP 200 decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140
+[2026-10-24T14:19:44.713Z] identical aggregation: all nodes agree byte-for-byte -> consensus reached
+[2026-10-24T14:19:44.715Z] report payload abi.encode(subjectId, attestationHash, decision, day) = 0xab8e1fd8a79c7adb6dae2d060248b12d79675802bcc7cde424a644f5bbc80b3c1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000013528a0
+[2026-10-24T14:19:44.723Z] EVMClient.writeReport -> receiver 0x000000000000000000000000000000000000dead, gasLimit 300000
+[2026-10-24T14:19:44.723Z] workflow result: {"vat":"IE6388047V","decision":"pass","attestationHash":"0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140","subjectId":"0xab8e1fd8a79c7adb6dae2d060248b12d79675802bcc7cde424a644f5bbc80b3c","day":20261024,"txHash":"0xabababababababababababababababababababababababababababababababab"}
+[2026-10-24T14:19:44.723Z] dry run OK (EVM write mocked: tx hash 0xabab… is a placeholder, no chain transaction)
+(pass) live dry run (LIVE=1) > N nodes agree, consensus reached, report encoded and written (EVM mocked) [2493.23ms]
+
+ 1 pass
+ 0 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [2.63s]

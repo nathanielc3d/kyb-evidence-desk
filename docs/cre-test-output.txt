@@ -1,0 +1,39 @@
+$ cd cre/kyb-attest && bun test
+bun test v1.4.2 (744846f84)
+
+live-dryrun.spec.ts:
+(skip) live dry run (LIVE=1) > N nodes agree, consensus reached, report encoded and written (EVM mocked)
+
+workflow.test.ts:
+(pass) pure helpers > buildQueryUrl encodes all fields and trims the trailing slash [0.32ms]
+(pass) pure helpers > fetchAttestation parses a good response [0.21ms]
+(pass) pure helpers > fetchAttestation fails closed on HTTP errors and malformed bodies [0.13ms]
+(pass) pure helpers > encodeAttestation round-trips through the ABI the registry decodes [1.48ms]
+(pass) onKybRequest (full workflow with mocked capabilities) > fetches, reaches consensus, signs and writes the report [6.80ms]
+(pass) onKybRequest (full workflow with mocked capabilities) > rejects an empty or invalid trigger payload [0.52ms]
+
+ 6 pass
+ 1 skip
+ 0 fail
+ 14 expect() calls
+Ran 7 tests across 2 files. [152.00ms]
+
+$ npx tsc --noEmit
+(no errors)
+
+$ cd cre && cre version && cre workflow build kyb-attest --target staging-settings
+CRE CLI version v1.39.0
+  Compiling workflow...
+✓ Workflow compiled successfully
+  Binary hash: 7c4cbd57db974c7d2a9d69826cae04e5484c6d490edecbab4eede878845418df
+✓ Build output written to ./kyb-attest/binary.wasm
+
+$ cre workflow simulate kyb-attest --target staging-settings --non-interactive --trigger-index 0 --http-payload @kyb-attest/http_trigger_payload.json
+Initializing...
+
+! You are not logged in
+
+✗ Authentication required: not logged in and no CRE_API_KEY set
+  → Run 'cre login' interactively, or
+  → Set CRE_API_KEY environment variable for non-interactive use
+✗ authentication required: no credentials found: you are not logged in, run cre login and try again

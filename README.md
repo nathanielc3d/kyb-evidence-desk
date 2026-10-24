@@ -2,7 +2,10 @@
 
 **Explainable, auditable EU counterparty due diligence for compliance teams and AI agents, with a Chainlink CRE workflow that anchors each verdict on-chain.**
 
+[![KYB Evidence Desk](docs/img/cover.jpg)](https://nathanielc3d.github.io/kyb-evidence-desk/)
+
 Live demo: https://kyb-evidence-desk.moneymachine.workers.dev  
+Demo video (2:43, captions): https://nathanielc3d.github.io/kyb-evidence-desk/ (MP4: [`docs/video/kyb-evidence-desk-demo.mp4`](docs/video/kyb-evidence-desk-demo.mp4), also attached to the [v1.0.0 release](https://github.com/nathanielc3d/kyb-evidence-desk/releases/tag/v1.0.0))  
 Built for the [BLI Legal Tech Hackathon 2](https://dorahacks.io/hackathon/1904) (LegalTech & RegTech track, Chainlink "Best workflow with CRE" bounty).
 
 ## Problem
@@ -27,28 +30,103 @@ Fail-safe by design: when VIES is down or busy (frequent for France), the check 
 
 ## Chainlink CRE workflow (`cre/kyb-attest`)
 
+**What the bounty asks, and where it is:** a CRE workflow that integrates a blockchain with an external API. Here: the external API is the EU VIES VAT registry (through our Worker, which adds IBAN and name rules and canonical hashing), and the blockchain is Ethereum Sepolia (`EVMClient.writeReport` to `KybAttestationRegistry`).
+
 ```
 HTTP trigger {vat, iban?, name?}
-  -> each DON node: GET /api/attestation (live VIES + IBAN + name rules)
-  -> consensus: every field must be identical across nodes (ConsensusAggregationByFields + identical)
-  -> DON-signed report: abi.encode(bytes32 subjectId, bytes32 attestationHash, uint8 decision, uint32 yyyymmdd)
-  -> EVMClient.writeReport -> KybAttestationRegistry.onReport (Ethereum Sepolia)
+  -> each DON node: GET /api/attestation (live VIES + IBAN + name rules)        [HTTPClient.sendRequest]
+  -> consensus: every field must be identical across nodes                      [ConsensusAggregationByFields + identical]
+  -> DON-signed report: abi.encode(bytes32 subjectId, bytes32 attestationHash,
+                                   uint8 decision, uint32 yyyymmdd)              [runtime.report, ecdsa/keccak256]
+  -> EVMClient.writeReport -> KybAttestationRegistry.onReport (Ethereum Sepolia) [only from the CRE forwarder]
 ```
+
+| File | Role |
+|---|---|
+| `cre/kyb-attest/workflow.ts` | Handler `onKybRequest`: payload validation (zod), per-node fetch with strict parsing (`fetchAttestation`, fails closed), identical-fields consensus, ABI encoding, signed report, EVM write |
+| `cre/kyb-attest/main.ts` | CRE `Runner` entry point (compiled to WASM) |
+| `cre/kyb-attest/workflow.yaml`, `cre/project.yaml` | CRE CLI target `staging-settings` (Sepolia public RPC) |
+| `cre/kyb-attest/workflow.test.ts` | 6 tests, including the full handler with the SDK's `HttpActionsMock` and `EvmMock` |
+| `cre/kyb-attest/live-dryrun.spec.ts` | Opt-in (`LIVE=1`) dry run against the live API with N emulated nodes |
+| `contracts/KybAttestationRegistry.sol` | `IReceiver` contract: forwarder-only `onReport`, per-subject history, `KybAttested` event, `wasAttested(subjectId, hash)` |
 
 The attestation core deliberately excludes per-request timestamps (it keeps the UTC day), so independent nodes checking the same counterparty on the same day reach byte-identical bytes. If nodes see different registry answers (e.g. VIES busy for some of them), consensus fails and nothing is written: the workflow fails closed.
 
 `contracts/KybAttestationRegistry.sol` accepts reports only from the CRE forwarder, keeps a per-subject history, emits `KybAttested`, and offers `wasAttested(subjectId, hash)` so an auditor can prove that a given report existed on a given day without the report being public.
 
+### Recorded output (2026-10-24, CRE CLI v1.39.0)
+
+Full logs: [`docs/cre-test-output.txt`](docs/cre-test-output.txt), [`docs/cre-live-dryrun-output.txt`](docs/cre-live-dryrun-output.txt), [`docs/cre-live-dryrun-failclosed.txt`](docs/cre-live-dryrun-failclosed.txt).
+
+```
+$ cd cre/kyb-attest && bun test
+(pass) pure helpers > buildQueryUrl encodes all fields and trims the trailing slash
+(pass) pure helpers > fetchAttestation parses a good response
+(pass) pure helpers > fetchAttestation fails closed on HTTP errors and malformed bodies
+(pass) pure helpers > encodeAttestation round-trips through the ABI the registry decodes
+(pass) onKybRequest (full workflow with mocked capabilities) > fetches, reaches consensus, signs and writes the report
+(pass) onKybRequest (full workflow with mocked capabilities) > rejects an empty or invalid trigger payload
+ 6 pass  1 skip (live dry run, opt-in)  0 fail
+
+$ cd cre && cre workflow build kyb-attest --target staging-settings
+✓ Workflow compiled successfully
+  Binary hash: 7c4cbd57db974c7d2a9d69826cae04e5484c6d490edecbab4eede878845418df
+
+$ LIVE=1 PAYLOAD=./http_trigger_payload.ie.json bun test live-dryrun.spec.ts
+node 1: HTTP 200 decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140
+node 2: HTTP 200 decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140
+node 3: HTTP 200 decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140
+node 4: HTTP 200 decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140
+identical aggregation: all nodes agree byte-for-byte -> consensus reached
+report payload abi.encode(subjectId, attestationHash, decision, day) = 0xab8e1fd8…3c 1bd938d1…40 …00 …013528a0
+EVMClient.writeReport -> receiver 0x000000000000000000000000000000000000dead, gasLimit 300000
+dry run OK (EVM write mocked: tx hash 0xabab… is a placeholder, no chain transaction)
+```
+
+Fail-closed case, captured live while VIES France was intermittently busy: node 1 got `pass`, nodes 2 to 4 got `review` (VIES unavailable), so the attestation hashes differ and `identical` consensus rejects the round. Nothing is written.
+
+`cre workflow simulate` (the official local simulator) needs a free CRE account: without `cre login` or `CRE_API_KEY` it stops with `Authentication required: not logged in and no CRE_API_KEY set`. `cre workflow build` works without an account (output above).
+
+### How to run the simulation
+
+```bash
+# 1. Install the CRE CLI (https://github.com/smartcontractkit/cre-cli/releases) and Bun
+cd cre/kyb-attest && bun install && cd ..
+# 2. Compile only (no account needed)
+cre workflow build kyb-attest --target staging-settings
+# 3. Official simulation (free account): cre login, then
+cre workflow simulate kyb-attest --target staging-settings \
+  --non-interactive --trigger-index 0 --http-payload @kyb-attest/http_trigger_payload.ie.json
+# 4. Without an account: live dry run with the SDK test harness (4 emulated nodes, EVM mocked)
+cd kyb-attest && LIVE=1 PAYLOAD=./http_trigger_payload.ie.json NODES=4 bun test live-dryrun.spec.ts
+```
+
+Tip: use the Irish payload (`http_trigger_payload.ie.json`) for a stable demo; VIES France often answers `MS_MAX_CONCURRENT_REQ`, which correctly yields `review` and can make nodes disagree.
+
+To write for real: deploy `KybAttestationRegistry` on Sepolia with the forwarder address listed by `cre workflow supported-chains`, put its address in `cre/kyb-attest/config.staging.json`, and add `--broadcast` (needs Sepolia test ETH; not deployed yet, since the zero-budget challenge rules out faucets that require a mainnet balance).
+
 ## Architecture
 
 ```
-browser / AI agent ──> Cloudflare Worker (src/worker.js)
-                         ├─ src/evidence.js  checks, verdict, canonical JSON, hashes, verify
-                         ├─ src/legal.js     legal references per check
-                         ├─ src/iban.js      ISO 13616 validation (offline)
-                         └─ EU VIES REST API (live)
-Chainlink CRE DON ──> /api/attestation ──> consensus ──> KybAttestationRegistry (Sepolia)
+                       ┌──────────────────────────── Cloudflare Worker (src/worker.js) ───────────────────────────┐
+browser / AI agent ──> │ /api/report  /api/attestation  /api/verify  /api/legal-basis   + HTML demo (src/page.js) │
+                       │   ├─ src/evidence.js  checks, verdict rules, canonical JSON, SHA-256 hashes, verify      │
+                       │   ├─ src/legal.js     legal reference per check (EUR-Lex links)                           │
+                       │   ├─ src/iban.js      ISO 13616 mod 97 + registry lengths (offline)                      │
+                       │   └─ fetch ──────────> EU VIES REST API (European Commission, live)                      │
+                       └──────────────────────────────────────────────────────────────────────────────────────────┘
+                                   ▲  GET /api/attestation (each node)
+Chainlink CRE DON (cre/kyb-attest) ┘──> identical consensus ──> signed report ──> forwarder ──> KybAttestationRegistry (Sepolia)
+                                                                                                └─ wasAttested(subjectId, hash) for auditors
 ```
+
+Design choices:
+
+- **Evidence over verdicts.** Every check carries its source URL, retrieval time and the SHA-256 of the raw registry response, so a reviewer can re-check it later.
+- **Two hashes.** `report_sha256` covers the full canonical report (tamper evidence for the document); the attestation hash covers only stable facts (VAT, VAT validity, registered name, IBAN hash, claimed name, decision, reason codes, rules version, UTC day) so multiple DON nodes agree.
+- **Data minimisation.** IBAN masked in the report; only `sha256(iban)` enters the attestation; only hashes go on-chain; nothing is stored server-side.
+- **Fail-safe defaults.** Registry unavailable means `review`, never `invalid`; node disagreement means no write.
+- **Human in the loop.** `human_review_required` plus a note citing GDPR art. 22 for decisions with legal effect.
 
 API:
 
@@ -72,12 +150,8 @@ bun test                     # 6 tests: helpers + full workflow with mocked HTTP
 npx tsc --noEmit             # typecheck
 bun node_modules/@chainlink/cre-sdk/bin/cre-compile.ts main.ts /tmp/kyb-attest.wasm   # compiles to WASM
 
-# Simulation with the CRE CLI (needs a free CRE account: `cre login`)
-cd cre && cre workflow simulate kyb-attest --target staging-settings \
-  --non-interactive --trigger-index 0 --http-payload @kyb-attest/http_trigger_payload.json
+# CRE CLI: see "How to run the simulation" above
 ```
-
-To write for real: deploy `KybAttestationRegistry` on Sepolia with the forwarder address listed by `cre workflow supported-chains`, put its address in `cre/kyb-attest/config.staging.json`, and add `--broadcast`.
 
 ## Limits (honest)
 
@@ -88,7 +162,7 @@ To write for real: deploy `KybAttestationRegistry` on Sepolia with the forwarder
 
 ## Disclosure
 
-Built by an AI agent (Grok Bot) operated by Nathaniel, as part of a public challenge. Code, tests and docs were written by the agent; the operator reviews and submits.
+Built by an AI agent (Grok Bot) operated by Nathaniel, as part of a public challenge. Code, tests, docs and the demo video (real captures, synthetic Piper TTS narration) were produced by the agent; the operator reviews and submits.
 
 ## License
 

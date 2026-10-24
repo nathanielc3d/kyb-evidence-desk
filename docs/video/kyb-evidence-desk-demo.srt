@@ -1,0 +1,71 @@
+1
+00:00:00,000 --> 00:00:14,083
+KYB Evidence Desk: explainable EU counterparty checks, anchored on-chain with Chainlink CRE. This video was produced by an AI agent, Grok Bot, operated by Nathaniel. The voice is synthetic; every screen is a real capture.
+
+2
+00:00:14,533 --> 00:00:29,128
+Before paying a supplier, EU firms must check who they deal with: AML due diligence, VAT registration, verification of payee. But the proof is usually a screenshot. When an auditor asks what was checked, when, and why, there is no evidence.
+
+3
+00:00:29,578 --> 00:00:41,606
+KYB Evidence Desk turns a VAT number, an IBAN and a claimed name into an evidence report: live checks, sources with hashes, an explainable verdict, the legal basis of each check, and a human review flag.
+
+4
+00:00:42,056 --> 00:00:47,001
+Live demo: Google Ireland's VAT number, an Irish IBAN, and the claimed name.
+
+5
+00:00:47,451 --> 00:00:56,351
+Verdict: pass, with stable reason codes. Even a pass recommends a human sign-off, as GDPR article twenty-two requires for decisions with legal effect.
+
+6
+00:00:56,801 --> 00:01:03,558
+Every check shows its result, source, retrieval time, and the SHA-256 of the raw registry response.
+
+7
+00:01:04,008 --> 00:01:12,622
+Each check is mapped to its legal basis: AML, VAT and VIES rules, the instant payments regulation, and GDPR, with EUR-Lex links.
+
+8
+00:01:13,072 --> 00:01:20,474
+A valid Irish company with a German IBAN: a classic invoice redirection signal. Verdict: review, human review required.
+
+9
+00:01:20,924 --> 00:01:26,851
+A bad IBAN checksum gives fail. The busy French registry is marked unavailable, never a false invalid.
+
+10
+00:01:27,301 --> 00:01:31,725
+Reports are tamper evident: the server recomputes the canonical hashes, and they match.
+
+11
+00:01:32,175 --> 00:01:35,878
+Change the decision from pass to fail, and verification returns false.
+
+12
+00:01:36,328 --> 00:01:45,181
+AI agents use the compact attestation endpoint. It holds only hashes, the decision and the day, so independent nodes compute byte-identical results.
+
+13
+00:01:45,631 --> 00:02:00,969
+Architecture: a Cloudflare worker runs the checks. A Chainlink CRE workflow has every DON node call the API, requires identical results, signs a report, and writes it to a registry contract on Ethereum Sepolia. Only hashes go on-chain.
+
+14
+00:02:01,419 --> 00:02:10,521
+The CRE handler, in the TypeScript SDK: HTTP fetch, consensus by fields with identical, a signed report, and an EVM write report.
+
+15
+00:02:10,971 --> 00:02:17,775
+Tests run the full handler with the SDK capability mocks, and the official CRE command line compiles it to WebAssembly.
+
+16
+00:02:18,225 --> 00:02:27,205
+In a live dry run, four emulated nodes query the live API, agree byte for byte, and the encoded report goes to the registry. The chain write is mocked here.
+
+17
+00:02:27,655 --> 00:02:33,304
+When registries disagree, consensus fails and nothing is written. The workflow fails closed.
+
+18
+00:02:33,754 --> 00:02:42,717
+Sourced, explainable, human-reviewed, provable. Open source, MIT. Built, and this video produced, by an AI agent operated by Nathaniel.
