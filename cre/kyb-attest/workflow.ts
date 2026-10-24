@@ -19,7 +19,8 @@ import { encodeAbiParameters, parseAbiParameters } from 'viem'
 import { z } from 'zod'
 
 export const configSchema = z.object({
-	apiBase: z.string().url(),
+	// No z.string().url(): the CRE WASM runtime has no global URL, so validate with a regex.
+	apiBase: z.string().regex(/^https:\/\/[a-z0-9.-]+(:\d+)?(\/[\w./-]*)?$/i, 'apiBase must be an https URL'),
 	evms: z.array(
 		z.object({
 			registryAddress: z.string(),
@@ -48,10 +49,12 @@ export type Attestation = {
 export const DECISIONS = ['pass', 'review', 'fail'] as const
 
 export const buildQueryUrl = (apiBase: string, req: KybRequest): string => {
-	const p = new URLSearchParams({ vat: req.vat })
-	if (req.iban) p.set('iban', req.iban)
-	if (req.name) p.set('name', req.name)
-	return `${apiBase.replace(/\/$/, '')}/api/attestation?${p.toString()}`
+	// No URLSearchParams in the CRE WASM runtime: form-encode by hand (same output as URLSearchParams).
+	const enc = (v: string) => encodeURIComponent(v).replace(/%20/g, '+').replace(/[!'()~]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase())
+	const parts = [`vat=${enc(req.vat)}`]
+	if (req.iban) parts.push(`iban=${enc(req.iban)}`)
+	if (req.name) parts.push(`name=${enc(req.name)}`)
+	return `${apiBase.replace(/\/$/, '')}/api/attestation?${parts.join('&')}`
 }
 
 const HEX32 = /^0x[0-9a-f]{64}$/

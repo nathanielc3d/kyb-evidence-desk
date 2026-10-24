@@ -35,21 +35,32 @@ Fail-safe by design: when VIES is down or busy (frequent for France), the check 
 | Build a CRE workflow used as an orchestration layer in the project | `cre/kyb-attest/workflow.ts` (TypeScript SDK): it is the only path from a KYB check to the chain. HTTP trigger -> per-node fetch -> consensus -> signed report -> EVM write |
 | Integrate at least one blockchain... | Ethereum Sepolia: `EVMClient.writeReport` to `contracts/KybAttestationRegistry.sol` (`IReceiver`, forwarder-only `onReport`) |
 | ...with an external API / data source | EU VIES VAT registry (European Commission), reached through `GET /api/attestation` on the live Worker, plus IBAN and name rules |
-| Demonstrate a simulation via the CRE CLI, or a live deployment | `cre workflow build` with the official CLI v1.39.0 compiles the workflow to WASM (recorded below). `cre workflow simulate` needs a CRE account (see "Simulation status"); until then the SDK test harness runs the full handler (6 tests) and a live dry run with 4 emulated nodes against the live API |
+| Demonstrate a simulation via the CRE CLI, or a live deployment | **`cre workflow simulate` passes end-to-end** with the official CLI v1.39.0: HTTP trigger -> live HTTP fetch of the Worker (HTTP 200) -> consensus -> signed report -> `EVM Chain WriteReport Dry-Run Successful` on Ethereum Sepolia. Output: [`docs/cre-simulate-output.txt`](docs/cre-simulate-output.txt), engine log: [`docs/cre-simulate-engine-log-excerpt.txt`](docs/cre-simulate-engine-log-excerpt.txt) |
 
-### Simulation status (checked 2026-10-24 18:00 CEST, CLI v1.39.0)
+### Simulation result (2026-10-24, CRE CLI v1.39.0)
 
-`cre workflow simulate` refuses to start without credentials, before compiling anything:
+Run with `./cre/simulate.sh` (logged-in CLI; `cre login` or `CRE_API_KEY`). The CLI prints box-local time (Paris) with a `Z` suffix.
 
 ```
-$ cre workflow simulate kyb-attest --target staging-settings --non-interactive --trigger-index 0 --http-payload kyb-attest/http_trigger_payload.ie.json
-! You are not logged in
-✗ Authentication required: not logged in and no CRE_API_KEY set
-  → Run 'cre login' interactively, or
-  → Set CRE_API_KEY environment variable for non-interactive use
+$ cre workflow simulate kyb-attest --target staging-settings --non-interactive --trigger-index 0 \
+    --http-payload kyb-attest/http_trigger_payload.ie.json
+✓ Workflow compiled
+  Binary hash: b415382311ff772118d02d30982b471e9a16b2b0e6be1ebc8f4589cc25223619
+✓ Created HTTP trigger payload with 3 fields
+[SIMULATION] Running trigger trigger=http-trigger@1.0.0-alpha
+[USER LOG] KYB attestation requested for VAT IE6388047V
+  (engine) HTTP Action Finished Status=200 URL=https://kyb-evidence-desk.moneymachine.workers.dev/api/attestation?...
+[USER LOG] Consensus: decision=pass attestation=0x1bd938d11363f6d8857d8339a7cce6697ae5db8e2fc75325391af33d7af7b140 day=20261024
+  (engine) EVM Chain WriteReport Started -> Dry-Run Enabled -> Dry-Run Successful
+[USER LOG] Attestation written to 0x000000000000000000000000000000000000dEaD tx 0x0000…0000
+✓ Workflow Simulation Result:
+{"vat":"IE6388047V","decision":"pass","attestationHash":"0x1bd938d1…7b140","subjectId":"0xab8e1fd8…80b3c","day":20261024,"txHash":"0x0000…0000"}
+Simulation complete!
 ```
 
-`cre login` opens a browser for a free account at cre.chain.link; `CRE_API_KEY` is created at https://app.chain.link (Account Settings). Once either exists, `./cre/simulate.sh` runs the simulation and saves its output to `docs/cre-simulate-output.txt`.
+The attestation hash is identical to the one the earlier 4-node live dry run produced, so the simulator, the SDK tests and the Worker agree byte-for-byte. The EVM write is a dry run (no `--broadcast`): the receiver is a placeholder and the tx hash is zero, because `KybAttestationRegistry` is not yet deployed on Sepolia.
+
+Fix needed to get there: the CRE WASM runtime has no global `URL`/`URLSearchParams`, so zod's `.url()` failed config validation (`invalid_string, path: [apiBase]`). `apiBase` is now checked with a regex and the query string is form-encoded by hand (same output, covered by the tests).
 
 ## Chainlink CRE workflow (`cre/kyb-attest`)
 
@@ -108,7 +119,7 @@ dry run OK (EVM write mocked: tx hash 0xabab… is a placeholder, no chain trans
 
 Fail-closed case, captured live while VIES France was intermittently busy: node 1 got `pass`, nodes 2 to 4 got `review` (VIES unavailable), so the attestation hashes differ and `identical` consensus rejects the round. Nothing is written.
 
-`cre workflow simulate` (the official local simulator) needs a free CRE account: without `cre login` or `CRE_API_KEY` it stops with `Authentication required: not logged in and no CRE_API_KEY set`. `cre workflow build` works without an account (output above).
+`cre workflow simulate` (the official local simulator) needs a free CRE account (`cre login` or `CRE_API_KEY`); it now passes, see "Simulation result" above. `cre workflow build` works without an account.
 
 ### How to run the simulation
 
@@ -126,7 +137,7 @@ cd kyb-attest && LIVE=1 PAYLOAD=./http_trigger_payload.ie.json NODES=4 bun test 
 
 Tip: use the Irish payload (`http_trigger_payload.ie.json`) for a stable demo; VIES France often answers `MS_MAX_CONCURRENT_REQ`, which correctly yields `review` and can make nodes disagree.
 
-To write for real: deploy `KybAttestationRegistry` on Sepolia with the forwarder address listed by `cre workflow supported-chains`, put its address in `cre/kyb-attest/config.staging.json`, and add `--broadcast` (needs Sepolia test ETH; not deployed yet, since the zero-budget challenge rules out faucets that require a mainnet balance).
+To write for real: deploy `KybAttestationRegistry` on Sepolia with the forwarder address listed by `cre workflow supported-chains`, put its address in `cre/kyb-attest/config.staging.json`, and add `--broadcast` (needs Sepolia test ETH; not deployed yet. Zero-cost route: the pk910 PoW faucet needs no mainnet balance or account, but a human captcha plus in-browser mining to reach its 0.05 SepETH minimum, which covers the registry deploy and many writes).
 
 ## Architecture
 
@@ -183,7 +194,7 @@ Examples from the live demo are in `examples/` (pass, review, fail, and a VIES-b
 | Typecheck | `npx tsc --noEmit` | clean |
 | CRE CLI compile to WASM | `cre workflow build kyb-attest --target staging-settings` | compiled, binary hash `7c4cbd57…418df` |
 | Live dry run, 4 emulated DON nodes vs live API | `LIVE=1 bun test live-dryrun.spec.ts` | identical consensus, ABI report produced (EVM write mocked); fail-closed case captured |
-| Official CRE simulator | `./cre/simulate.sh` | needs `cre login` / `CRE_API_KEY` (see above) |
+| Official CRE simulator | `./cre/simulate.sh` | **passes end-to-end** (HTTP 200 -> consensus -> WriteReport dry run on Sepolia) |
 | CI (GitHub Actions) | push to `main` | green |
 
 ## Run it
