@@ -1,0 +1,176 @@
+{
+  "schema": "kyb-evidence-report/1",
+  "generated_at": "2026-10-24T13:26:15.277Z",
+  "purpose": "counterparty due diligence before payment or contract",
+  "subject": {
+    "vat": "IE6388047V",
+    "claimed_name": "Google Ireland",
+    "iban_masked": "DE89**************3000"
+  },
+  "checks": [
+    {
+      "id": "vat.vies",
+      "status": "pass",
+      "result": {
+        "valid": true,
+        "status": "VALID",
+        "name": "GOOGLE IRELAND LIMITED",
+        "address": "3RD FLOOR, GORDON HOUSE, BARROW STREET, DUBLIN 4",
+        "request_date": "2026-10-24T13:26:15.909Z"
+      },
+      "source": {
+        "name": "EU VIES (European Commission)",
+        "url": "https://ec.europa.eu/taxation_customs/vies/rest-api/ms/IE/vat/6388047V",
+        "retrieved_at": "2026-10-24T13:26:15.277Z",
+        "response_sha256": "0x19624b04908b8e2c0ac070a411b80f95fcf6c92d28525699b99393160bb72977"
+      },
+      "legal_basis": [
+        "VAT_VIES",
+        "AMLD_CDD"
+      ]
+    },
+    {
+      "id": "iban.structure",
+      "status": "pass",
+      "result": {
+        "iban_masked": "DE89**************3000",
+        "country": "DE",
+        "sepa": true,
+        "valid": true,
+        "errors": [],
+        "bank_code": "37040044"
+      },
+      "source": {
+        "name": "ISO 13616 mod 97-10 + SWIFT IBAN registry lengths (computed offline)",
+        "retrieved_at": "2026-10-24T13:26:15.277Z"
+      },
+      "legal_basis": [
+        "SEPA_VOP",
+        "GDPR_MINIMISATION"
+      ]
+    },
+    {
+      "id": "iban.country_consistency",
+      "status": "review",
+      "result": {
+        "vat_country": "IE",
+        "iban_country": "DE"
+      },
+      "legal_basis": [
+        "AMLD_CDD"
+      ]
+    },
+    {
+      "id": "name.match",
+      "status": "pass",
+      "result": {
+        "claimed_name": "Google Ireland",
+        "registered_name": "GOOGLE IRELAND LIMITED",
+        "token_overlap": 1,
+        "threshold": 0.5
+      },
+      "legal_basis": [
+        "SEPA_VOP",
+        "AMLD_CDD"
+      ]
+    }
+  ],
+  "verdict": {
+    "decision": "review",
+    "reasons": [
+      {
+        "code": "VAT_VALID",
+        "severity": "pass",
+        "text": "VAT IE6388047V is valid in VIES (registered name: GOOGLE IRELAND LIMITED)."
+      },
+      {
+        "code": "IBAN_VALID",
+        "severity": "pass",
+        "text": "IBAN checksum and length are valid (DE)."
+      },
+      {
+        "code": "IBAN_COUNTRY_MISMATCH",
+        "severity": "review",
+        "text": "IBAN country DE differs from VAT country IE: common for groups, but also a classic invoice-redirection fraud signal."
+      },
+      {
+        "code": "NAME_MATCH",
+        "severity": "pass",
+        "text": "Claimed name matches the registered name (overlap 1)."
+      }
+    ],
+    "rules_version": "2026-10-24.1",
+    "human_review_required": true,
+    "human_review_note": "Escalate to a human reviewer before paying, onboarding or signing. Do not rely on this automated result alone (GDPR art. 22)."
+  },
+  "legal_basis": [
+    {
+      "key": "VAT_VIES",
+      "title": "Intra-EU VAT number confirmation",
+      "ref": "Council Directive 2006/112/EC, art. 138(1)(b); Council Regulation (EU) No 904/2010, art. 31",
+      "summary": "The VAT exemption for intra-EU supplies requires the customer to hold a valid VAT identification number in another member state; member states must let businesses confirm a number's validity electronically (VIES).",
+      "url": "https://eur-lex.europa.eu/eli/reg/2010/904/oj"
+    },
+    {
+      "key": "AMLD_CDD",
+      "title": "EU AML customer due diligence",
+      "ref": "Directive (EU) 2015/849 (AMLD4/5), art. 13(1)(a); Regulation (EU) 2024/1624 (AMLR, applicable from 10 July 2027), art. 20 and 22",
+      "summary": "Obliged entities must identify the customer and verify identity on the basis of documents, data or information from a reliable and independent source. Official registries such as VIES are such a source for the existence of a VAT-registered business; they are not sufficient on their own for beneficial-ownership checks.",
+      "url": "https://eur-lex.europa.eu/eli/dir/2015/849/oj"
+    },
+    {
+      "key": "SEPA_VOP",
+      "title": "Verification of Payee (payee name vs IBAN)",
+      "ref": "Regulation (EU) 2024/886 (Instant Payments Regulation), art. 5c of Regulation (EU) 260/2012",
+      "summary": "Since 9 October 2025, EU payment providers must check that the payee name matches the IBAN before a credit transfer. This tool's name and IBAN checks are an upstream, registry-based complement, not a bank VoP response.",
+      "url": "https://eur-lex.europa.eu/eli/reg/2024/886/oj"
+    },
+    {
+      "key": "GDPR_MINIMISATION",
+      "title": "Data minimisation",
+      "ref": "Regulation (EU) 2016/679 (GDPR), art. 5(1)(c) and 25",
+      "summary": "The report masks the IBAN and only a SHA-256 digest of it enters the attestation. Nothing is stored server-side; nothing personal is written on-chain.",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    },
+    {
+      "key": "GDPR_ART22",
+      "title": "No solely automated decision with legal effect",
+      "ref": "Regulation (EU) 2016/679 (GDPR), art. 22",
+      "summary": "Where counterparties are natural persons (e.g. sole traders), a decision with legal or similarly significant effect must not rest solely on automated processing: the report always carries a human-review flag and note.",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    },
+    {
+      "key": "GDPR_LAWFUL_BASIS",
+      "title": "Lawful basis for the checks",
+      "ref": "Regulation (EU) 2016/679 (GDPR), art. 6(1)(c) legal obligation (AML) and 6(1)(f) legitimate interest (fraud prevention, recital 47)",
+      "summary": "Checking a business counterparty against public registries before paying it is covered by a legal obligation for obliged entities and by the legitimate interest in preventing fraud for others.",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    }
+  ],
+  "attestation": {
+    "schema": "kyb-evidence-report/1",
+    "rules_version": "2026-10-24.1",
+    "day": "2026-10-24",
+    "subject_vat": "IE6388047V",
+    "vat_valid": true,
+    "registered_name": "GOOGLE IRELAND LIMITED",
+    "iban_sha256": "0xfaf7e1c0107370ff6f5d03205da7d8ae41ba8e22b31e94b986a65210075d9a1d",
+    "claimed_name": "Google Ireland",
+    "decision": "review",
+    "reason_codes": [
+      "IBAN_COUNTRY_MISMATCH",
+      "IBAN_VALID",
+      "NAME_MATCH",
+      "VAT_VALID"
+    ],
+    "subject_id": "0xab8e1fd8a79c7adb6dae2d060248b12d79675802bcc7cde424a644f5bbc80b3c",
+    "hash": "0x2ef6a39cb70dc7236f6e2c6d4ddcb21dfced3b525199e5a7d1d42b73824ab2c3"
+  },
+  "disclaimer": "Decision support built from official public data. Not legal advice. A pass does not prove who you are dealing with (no beneficial-owner, sanctions or PEP screening in this version).",
+  "generator": {
+    "name": "KYB Evidence Desk",
+    "repo": "https://github.com/nathanielc3d/kyb-evidence-desk",
+    "built_by": "an AI agent (Grok Bot) operated by Nathaniel"
+  },
+  "report_sha256": "0xc931187434c9b579e62dae2a6b2da5ecdf9d3721498cfb79b0186f5345ccddea"
+}

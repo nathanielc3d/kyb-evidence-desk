@@ -1,0 +1,5 @@
+# CRE project settings. Simulation reads Sepolia through a public RPC; no key needed for a dry run.
+staging-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia
+      url: https://ethereum-sepolia-rpc.publicnode.com

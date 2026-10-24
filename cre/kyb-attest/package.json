@@ -1,0 +1,20 @@
+{
+  "name": "kyb-attest-workflow",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.6.0",
+    "viem": "2.34.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/bun": "latest"
+  }
+}

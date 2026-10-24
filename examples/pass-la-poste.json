@@ -1,0 +1,170 @@
+{
+  "schema": "kyb-evidence-report/1",
+  "generated_at": "2026-10-24T13:26:06.134Z",
+  "purpose": "counterparty due diligence before payment or contract",
+  "subject": {
+    "vat": "FR39356000000",
+    "claimed_name": "La Poste",
+    "iban_masked": "FR76*******************0189"
+  },
+  "checks": [
+    {
+      "id": "vat.vies",
+      "status": "pass",
+      "result": {
+        "valid": true,
+        "status": "VALID",
+        "name": "SA LA POSTE-DIRECTION GENERALE DE LA PO",
+        "address": "9 RUE DU COLONEL PIERRE AVIA, 92130 ISSY LES MOULINEAUX",
+        "request_date": "2026-10-24T13:26:14.878Z"
+      },
+      "source": {
+        "name": "EU VIES (European Commission)",
+        "url": "https://ec.europa.eu/taxation_customs/vies/rest-api/ms/FR/vat/39356000000",
+        "retrieved_at": "2026-10-24T13:26:06.134Z",
+        "response_sha256": "0x5b3a3fc74e8e702bff54c4307b9857208b9d41f7d2d5a6ced114c836c7b593f1"
+      },
+      "legal_basis": [
+        "VAT_VIES",
+        "AMLD_CDD"
+      ]
+    },
+    {
+      "id": "iban.structure",
+      "status": "pass",
+      "result": {
+        "iban_masked": "FR76*******************0189",
+        "country": "FR",
+        "sepa": true,
+        "valid": true,
+        "errors": [],
+        "bank_code": "30006"
+      },
+      "source": {
+        "name": "ISO 13616 mod 97-10 + SWIFT IBAN registry lengths (computed offline)",
+        "retrieved_at": "2026-10-24T13:26:06.134Z"
+      },
+      "legal_basis": [
+        "SEPA_VOP",
+        "GDPR_MINIMISATION"
+      ]
+    },
+    {
+      "id": "iban.country_consistency",
+      "status": "pass",
+      "result": {
+        "vat_country": "FR",
+        "iban_country": "FR"
+      },
+      "legal_basis": [
+        "AMLD_CDD"
+      ]
+    },
+    {
+      "id": "name.match",
+      "status": "pass",
+      "result": {
+        "claimed_name": "La Poste",
+        "registered_name": "SA LA POSTE-DIRECTION GENERALE DE LA PO",
+        "token_overlap": 1,
+        "threshold": 0.5
+      },
+      "legal_basis": [
+        "SEPA_VOP",
+        "AMLD_CDD"
+      ]
+    }
+  ],
+  "verdict": {
+    "decision": "pass",
+    "reasons": [
+      {
+        "code": "VAT_VALID",
+        "severity": "pass",
+        "text": "VAT FR39356000000 is valid in VIES (registered name: SA LA POSTE-DIRECTION GENERALE DE LA PO)."
+      },
+      {
+        "code": "IBAN_VALID",
+        "severity": "pass",
+        "text": "IBAN checksum and length are valid (FR)."
+      },
+      {
+        "code": "NAME_MATCH",
+        "severity": "pass",
+        "text": "Claimed name matches the registered name (overlap 1)."
+      }
+    ],
+    "rules_version": "2026-10-24.1",
+    "human_review_required": false,
+    "human_review_note": "Automated checks passed. A compliance officer should still sign off before any decision with legal effect (GDPR art. 22)."
+  },
+  "legal_basis": [
+    {
+      "key": "VAT_VIES",
+      "title": "Intra-EU VAT number confirmation",
+      "ref": "Council Directive 2006/112/EC, art. 138(1)(b); Council Regulation (EU) No 904/2010, art. 31",
+      "summary": "The VAT exemption for intra-EU supplies requires the customer to hold a valid VAT identification number in another member state; member states must let businesses confirm a number's validity electronically (VIES).",
+      "url": "https://eur-lex.europa.eu/eli/reg/2010/904/oj"
+    },
+    {
+      "key": "AMLD_CDD",
+      "title": "EU AML customer due diligence",
+      "ref": "Directive (EU) 2015/849 (AMLD4/5), art. 13(1)(a); Regulation (EU) 2024/1624 (AMLR, applicable from 10 July 2027), art. 20 and 22",
+      "summary": "Obliged entities must identify the customer and verify identity on the basis of documents, data or information from a reliable and independent source. Official registries such as VIES are such a source for the existence of a VAT-registered business; they are not sufficient on their own for beneficial-ownership checks.",
+      "url": "https://eur-lex.europa.eu/eli/dir/2015/849/oj"
+    },
+    {
+      "key": "SEPA_VOP",
+      "title": "Verification of Payee (payee name vs IBAN)",
+      "ref": "Regulation (EU) 2024/886 (Instant Payments Regulation), art. 5c of Regulation (EU) 260/2012",
+      "summary": "Since 9 October 2025, EU payment providers must check that the payee name matches the IBAN before a credit transfer. This tool's name and IBAN checks are an upstream, registry-based complement, not a bank VoP response.",
+      "url": "https://eur-lex.europa.eu/eli/reg/2024/886/oj"
+    },
+    {
+      "key": "GDPR_MINIMISATION",
+      "title": "Data minimisation",
+      "ref": "Regulation (EU) 2016/679 (GDPR), art. 5(1)(c) and 25",
+      "summary": "The report masks the IBAN and only a SHA-256 digest of it enters the attestation. Nothing is stored server-side; nothing personal is written on-chain.",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    },
+    {
+      "key": "GDPR_ART22",
+      "title": "No solely automated decision with legal effect",
+      "ref": "Regulation (EU) 2016/679 (GDPR), art. 22",
+      "summary": "Where counterparties are natural persons (e.g. sole traders), a decision with legal or similarly significant effect must not rest solely on automated processing: the report always carries a human-review flag and note.",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    },
+    {
+      "key": "GDPR_LAWFUL_BASIS",
+      "title": "Lawful basis for the checks",
+      "ref": "Regulation (EU) 2016/679 (GDPR), art. 6(1)(c) legal obligation (AML) and 6(1)(f) legitimate interest (fraud prevention, recital 47)",
+      "summary": "Checking a business counterparty against public registries before paying it is covered by a legal obligation for obliged entities and by the legitimate interest in preventing fraud for others.",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    }
+  ],
+  "attestation": {
+    "schema": "kyb-evidence-report/1",
+    "rules_version": "2026-10-24.1",
+    "day": "2026-10-24",
+    "subject_vat": "FR39356000000",
+    "vat_valid": true,
+    "registered_name": "SA LA POSTE-DIRECTION GENERALE DE LA PO",
+    "iban_sha256": "0x2847f6106ab6f0da11e73d5c896edc145fae3f8c1b04458a83bca2fe49a846e8",
+    "claimed_name": "La Poste",
+    "decision": "pass",
+    "reason_codes": [
+      "IBAN_VALID",
+      "NAME_MATCH",
+      "VAT_VALID"
+    ],
+    "subject_id": "0xee5b6cee6ddd89585d8f5a7a800786481de6107ddf97db08166da7ea42cfde0d",
+    "hash": "0xd5de096e21663a876a5b6e54d46d87cb648b0f6b47c0c722e83a9e75de4483a4"
+  },
+  "disclaimer": "Decision support built from official public data. Not legal advice. A pass does not prove who you are dealing with (no beneficial-owner, sanctions or PEP screening in this version).",
+  "generator": {
+    "name": "KYB Evidence Desk",
+    "repo": "https://github.com/nathanielc3d/kyb-evidence-desk",
+    "built_by": "an AI agent (Grok Bot) operated by Nathaniel"
+  },
+  "report_sha256": "0xdc160cecced4a7cdfcd1481c268317d435b53c09eb92afbe7bb446bbd9541c0a"
+}

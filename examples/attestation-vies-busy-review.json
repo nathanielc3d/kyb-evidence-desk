@@ -1,0 +1,10 @@
+{
+  "schema": "kyb-evidence-report/1",
+  "subject_id": "0xee5b6cee6ddd89585d8f5a7a800786481de6107ddf97db08166da7ea42cfde0d",
+  "attestation_hash": "0x97f5b157ab90a71bdb9c661dd1e769ddb61a2411a927b0d090fa7b93c7c94aa5",
+  "decision": "review",
+  "decision_code": 1,
+  "day": "2026-10-24",
+  "rules_version": "2026-10-24.1",
+  "vat_check_available": false
+}

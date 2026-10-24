@@ -1,0 +1,13 @@
+{
+  "name": "kyb-evidence-desk",
+  "version": "1.0.0",
+  "description": "Explainable, auditable EU counterparty (KYB) due diligence with legal basis, human-review flag and Chainlink CRE on-chain attestation.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "examples": "node scripts/make-examples.mjs",
+    "deploy": "wrangler deploy"
+  }
+}

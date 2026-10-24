@@ -1,0 +1,10 @@
+{
+  "apiBase": "https://kyb-evidence-desk.moneymachine.workers.dev",
+  "evms": [
+    {
+      "registryAddress": "0x000000000000000000000000000000000000dEaD",
+      "chainSelectorName": "ethereum-testnet-sepolia",
+      "gasLimit": "300000"
+    }
+  ]
+}
