@@ -5,7 +5,7 @@
 [![KYB Evidence Desk](docs/img/cover.jpg)](https://nathanielc3d.github.io/kyb-evidence-desk/)
 
 Live demo: https://kyb-evidence-desk.moneymachine.workers.dev  
-Demo video (2:43, captions): https://nathanielc3d.github.io/kyb-evidence-desk/ (MP4: [`docs/video/kyb-evidence-desk-demo.mp4`](docs/video/kyb-evidence-desk-demo.mp4), also attached to the [v1.0.0 release](https://github.com/nathanielc3d/kyb-evidence-desk/releases/tag/v1.0.0))  
+Demo video (1:56, English captions, real screen recording of the live demo): https://nathanielc3d.github.io/kyb-evidence-desk/ (direct MP4: https://nathanielc3d.github.io/kyb-evidence-desk/video/kyb-evidence-desk-demo.mp4, also attached to the [v1.0.0 release](https://github.com/nathanielc3d/kyb-evidence-desk/releases/download/v1.0.0/kyb-evidence-desk-demo.mp4))  
 Built for the [BLI Legal Tech Hackathon 2](https://dorahacks.io/hackathon/1904) (LegalTech & RegTech track, Chainlink "Best workflow with CRE" bounty).
 
 ## Problem
@@ -27,6 +27,29 @@ Give it an EU VAT number, optionally an IBAN and the name the counterparty claim
 | Privacy | The IBAN is masked in the report and only its SHA-256 enters the attestation. Nothing is stored. Only hashes go on-chain |
 
 Fail-safe by design: when VIES is down or busy (frequent for France), the check is marked `unavailable` and the verdict is `review`, never a false `invalid`.
+
+## Chainlink CRE bounty: requirement checklist
+
+| Bounty requirement | Where it is met |
+|---|---|
+| Build a CRE workflow used as an orchestration layer in the project | `cre/kyb-attest/workflow.ts` (TypeScript SDK): it is the only path from a KYB check to the chain. HTTP trigger -> per-node fetch -> consensus -> signed report -> EVM write |
+| Integrate at least one blockchain... | Ethereum Sepolia: `EVMClient.writeReport` to `contracts/KybAttestationRegistry.sol` (`IReceiver`, forwarder-only `onReport`) |
+| ...with an external API / data source | EU VIES VAT registry (European Commission), reached through `GET /api/attestation` on the live Worker, plus IBAN and name rules |
+| Demonstrate a simulation via the CRE CLI, or a live deployment | `cre workflow build` with the official CLI v1.39.0 compiles the workflow to WASM (recorded below). `cre workflow simulate` needs a CRE account (see "Simulation status"); until then the SDK test harness runs the full handler (6 tests) and a live dry run with 4 emulated nodes against the live API |
+
+### Simulation status (checked 2026-10-24 18:00 CEST, CLI v1.39.0)
+
+`cre workflow simulate` refuses to start without credentials, before compiling anything:
+
+```
+$ cre workflow simulate kyb-attest --target staging-settings --non-interactive --trigger-index 0 --http-payload kyb-attest/http_trigger_payload.ie.json
+! You are not logged in
+✗ Authentication required: not logged in and no CRE_API_KEY set
+  → Run 'cre login' interactively, or
+  → Set CRE_API_KEY environment variable for non-interactive use
+```
+
+`cre login` opens a browser for a free account at cre.chain.link; `CRE_API_KEY` is created at https://app.chain.link (Account Settings). Once either exists, `./cre/simulate.sh` runs the simulation and saves its output to `docs/cre-simulate-output.txt`.
 
 ## Chainlink CRE workflow (`cre/kyb-attest`)
 
@@ -94,9 +117,9 @@ Fail-closed case, captured live while VIES France was intermittently busy: node 
 cd cre/kyb-attest && bun install && cd ..
 # 2. Compile only (no account needed)
 cre workflow build kyb-attest --target staging-settings
-# 3. Official simulation (free account): cre login, then
-cre workflow simulate kyb-attest --target staging-settings \
-  --non-interactive --trigger-index 0 --http-payload @kyb-attest/http_trigger_payload.ie.json
+# 3. Official simulation (free account): `cre login` or export CRE_API_KEY, then
+./simulate.sh            # = cre workflow simulate kyb-attest --target staging-settings \
+                         #     --non-interactive --trigger-index 0 --http-payload kyb-attest/http_trigger_payload.ie.json
 # 4. Without an account: live dry run with the SDK test harness (4 emulated nodes, EVM mocked)
 cd kyb-attest && LIVE=1 PAYLOAD=./http_trigger_payload.ie.json NODES=4 bun test live-dryrun.spec.ts
 ```
@@ -106,6 +129,20 @@ Tip: use the Irish payload (`http_trigger_payload.ie.json`) for a stable demo; V
 To write for real: deploy `KybAttestationRegistry` on Sepolia with the forwarder address listed by `cre workflow supported-chains`, put its address in `cre/kyb-attest/config.staging.json`, and add `--broadcast` (needs Sepolia test ETH; not deployed yet, since the zero-budget challenge rules out faucets that require a mainnet balance).
 
 ## Architecture
+
+```mermaid
+flowchart LR
+  U[Compliance officer / AI agent] -->|VAT, IBAN, name| W[Cloudflare Worker<br/>/api/report · /api/attestation · /api/verify]
+  W -->|live lookup| V[(EU VIES VAT registry)]
+  W --> R[Evidence report<br/>checks · sources · SHA-256 · legal basis<br/>verdict + human-review flag]
+  T[HTTP trigger] --> C{{Chainlink CRE workflow<br/>cre/kyb-attest}}
+  C -->|every DON node: GET /api/attestation| W
+  C -->|identical consensus, DON-signed report| F[CRE forwarder]
+  F -->|onReport: subjectId, attestationHash, decision, day| K[(KybAttestationRegistry<br/>Ethereum Sepolia)]
+  A[Auditor] -->|wasAttested subjectId, hash| K
+```
+
+Detailed view:
 
 ```
                        ┌──────────────────────────── Cloudflare Worker (src/worker.js) ───────────────────────────┐
@@ -137,6 +174,18 @@ API:
 
 Examples from the live demo are in `examples/` (pass, review, fail, and a VIES-busy case).
 
+## Test results (2026-10-24)
+
+| Suite | Command | Result |
+|---|---|---|
+| Worker rules, hashing, verify, IBAN, legal map (VIES mocked) | `npm test` | 14 / 14 pass |
+| CRE workflow: helpers + full handler with SDK `HttpActionsMock` / `EvmMock` | `cd cre/kyb-attest && bun test` | 6 pass, 1 skipped (opt-in live run) |
+| Typecheck | `npx tsc --noEmit` | clean |
+| CRE CLI compile to WASM | `cre workflow build kyb-attest --target staging-settings` | compiled, binary hash `7c4cbd57…418df` |
+| Live dry run, 4 emulated DON nodes vs live API | `LIVE=1 bun test live-dryrun.spec.ts` | identical consensus, ABI report produced (EVM write mocked); fail-closed case captured |
+| Official CRE simulator | `./cre/simulate.sh` | needs `cre login` / `CRE_API_KEY` (see above) |
+| CI (GitHub Actions) | push to `main` | green |
+
 ## Run it
 
 ```bash
@@ -162,7 +211,7 @@ bun node_modules/@chainlink/cre-sdk/bin/cre-compile.ts main.ts /tmp/kyb-attest.w
 
 ## Disclosure
 
-Built by an AI agent (Grok Bot) operated by Nathaniel, as part of a public challenge. Code, tests, docs and the demo video (real captures, synthetic Piper TTS narration) were produced by the agent; the operator reviews and submits.
+Built by an AI agent (Grok Bot) operated by Nathaniel, as part of a public challenge. Code, tests, docs and the demo video (real headless screen recording of the live demo, synthetic Piper TTS narration) were produced by the agent; the operator reviews and submits.
 
 ## License
 
