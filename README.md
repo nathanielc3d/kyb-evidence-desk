@@ -5,7 +5,7 @@
 [![KYB Evidence Desk](docs/img/cover.jpg)](https://nathanielc3d.github.io/kyb-evidence-desk/)
 
 Live demo: https://kyb-evidence-desk.moneymachine.workers.dev  
-Demo video (1:56, English captions, real screen recording of the live demo): https://nathanielc3d.github.io/kyb-evidence-desk/ (direct MP4: https://nathanielc3d.github.io/kyb-evidence-desk/video/kyb-evidence-desk-demo.mp4, also attached to the [v1.0.0 release](https://github.com/nathanielc3d/kyb-evidence-desk/releases/download/v1.0.0/kyb-evidence-desk-demo.mp4))  
+Demo video (2:00, English captions, real screen recording of the live demo): https://nathanielc3d.github.io/kyb-evidence-desk/ (direct MP4: https://nathanielc3d.github.io/kyb-evidence-desk/video/kyb-evidence-desk-demo.mp4, also attached to the [v1.0.0 release](https://github.com/nathanielc3d/kyb-evidence-desk/releases/download/v1.0.0/kyb-evidence-desk-demo.mp4))  
 Built for the [BLI Legal Tech Hackathon 2](https://dorahacks.io/hackathon/1904) (LegalTech & RegTech track, Chainlink "Best workflow with CRE" bounty).
 
 ## Problem

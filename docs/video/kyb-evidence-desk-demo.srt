@@ -43,9 +43,9 @@ The handler, in the CRE TypeScript SDK: an HTTP fetch on every node, consensus w
 Tests run the full handler with the SDK's capability mocks, and the official CRE CLI compiles it to WebAssembly.
 
 12
-00:01:40,621 --> 00:01:50,736
-In a live dry run, four nodes query the live API and agree byte for byte; the chain write is mocked here. If registries disagree, nothing is written: it fails closed.
+00:01:40,621 --> 00:01:54,393
+The official CRE CLI simulation passes end to end: the HTTP trigger fires, the workflow fetches the live API, reaches consensus, and the EVM write report succeeds as a dry run on Sepolia. If results disagree, nothing is written.
 
 13
-00:01:51,236 --> 00:01:55,790
+00:01:54,893 --> 00:01:59,447
 Sourced, explainable, human-reviewed, provable. Open source under MIT.
